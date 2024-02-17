@@ -10,3 +10,25 @@ void adc_init(void){
 
 	//gli altri andranno settati dopo aver ricevuto le impostazioni dal pc
 }
+
+void adc_sel(uint8_t adc_number){
+
+	//imposta gli adc selezionati
+
+
+}
+
+void freq_set(uint8_t frequency){
+
+	//imposta la frequenza selezionata
+
+
+}
+
+void mode_set(uint8_t mode){
+
+	//imposta la modalità selezionata
+
+
+
+}
