@@ -11,6 +11,15 @@ void adc_init(void){
 	//gli altri andranno settati dopo aver ricevuto le impostazioni dal pc
 }
 
+void timer_init(void){
+
+	//inizializzo timer: prescaler 256x, CTC
+	TCCR5A = 0;
+	TCCR5B = (1 << WGM52) | (1 << CS52);
+
+
+}
+
 void adc_sel(uint8_t adc_number){
 
 	//imposta gli adc selezionati
@@ -20,7 +29,9 @@ void adc_sel(uint8_t adc_number){
 
 void freq_set(uint8_t frequency){
 
-	//imposta la frequenza selezionata
+	//imposta la frequenza selezionata: frequency contiene ogni quanti ms deve essere effutato un sampling
+	uint16_t ocrval=(uint16_t)(62.500*frequency);
+	OCR5A = ocrval;
 
 
 }
