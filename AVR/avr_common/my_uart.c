@@ -1,4 +1,5 @@
 #include "my_uart.h"
+#include "my_variables.h"
 
 void UART_init(void) {
   // Set baud rate
@@ -6,16 +7,16 @@ void UART_init(void) {
   UBRR0L = (uint8_t)MYUBRR;
 
   UCSR0C = (1<<UCSZ01) | (1<<UCSZ00); /* 8-bit data */ 
-  UCSR0B = (1<<RXEN0) | (1<<TXEN0) | (1<<RXCIE0) | (1<<TXCIE0) | (1<<UDRIE0);   /* Enable RX and TX */  
+  UCSR0B = (1<<RXEN0) | (1<<TXEN0) | (1<<RXCIE0) | (1<<TXCIE0);   /* Enable RX and TX */  
 
 }
 
 void UART_putChar(uint8_t c){
-  // wait for transmission completed, looping on status bit
-  while ( !(UCSR0A & (1<<UDRE0)) );
-
+  // wait for transmission completed
+  while ( ! byte_tra);
   // Start transmission
   UDR0 = c;
+  byte_tra = 0;
 }
 
 uint8_t UART_getChar(void){

@@ -1,12 +1,13 @@
 #include "my_adc.h"
+#include "my_variables.h"
 
 void adc_init(void){
 	//inizializza adc qui
 	//da inizializzare: ADMUX, ADCSRA, ADCSRB,DIDR0, DIDR2
 
-	ADMUX |= (1 << REFS0) //da modificare in seguito per decidere quale/i adc modificare. AVCC da collegare hardware!
+	ADMUX |= (1 << REFS0); //da modificare in seguito per decidere quale/i adc usare. AVCC da collegare hardware!
 
-	ADCSRA |= (1 << ADEN) | (1 << ADIE) //mancano da impostare le impostazioni da richiedere al pc(trigger mode, partenza e prescaler)
+	ADCSRA |= (1 << ADEN);
 
 	//gli altri andranno settati dopo aver ricevuto le impostazioni dal pc
 }
@@ -22,24 +23,35 @@ void timer_init(void){
 
 void adc_sel(uint8_t adc_number){
 
-	//imposta gli adc selezionati
+	//disattivo gli input digitali (disattivo il buffer dell'input digitale)
+	uint8_t i = 0;
+	for(i=0;i<adc_number;i++){
+		DIDR0 = (DIDR0<<1) | 0x1;
+	} 
 
 
 }
 
 void freq_set(uint8_t frequency){
 
-	//imposta la frequenza selezionata: frequency contiene ogni quanti ms deve essere effutato un sampling
+	//imposta la frequenza selezionata: frequency contiene ogni quanti ms deve essere effettuato un sampling
 	uint16_t ocrval=(uint16_t)(62.500*frequency);
 	OCR5A = ocrval;
 
 
 }
 
-void mode_set(uint8_t mode){
+//void mode_set(uint8_t mode){
+//	//imposta la modalità selezionata
+//}
 
-	//imposta la modalità selezionata
+void adc_conv(uint8_t var){
 
+	ADMUX |= (var & 0x07);   //seleziono il canale da cui leggere
+	ADCSRA |= (1<<ADSC);     //faccio partire la conversione
 
+	while(ADCSRA & (1<<ADSC)); //aspetta che finisca la conversione
+	buffer_tx[0] = ADCL;
+	buffer_tx[1] = ADCH;
 
 }

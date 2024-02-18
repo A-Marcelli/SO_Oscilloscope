@@ -29,10 +29,10 @@ BINS=main_avr.elf
 
 # put here the additional .o files you want to generate
 # one .c file for each .o should be present
-OBJS=./avr_common/my_uart.o
+OBJS=./avr_common/my_uart.o ./avr_common/my_adc.o
 
 # put here the additional header files needed for compilation
-HEADERS=./avr_common/my_uart.h
+HEADERS=./avr_common/my_uart.h ./avr_common/my_adc.h ./avr_common/my_variables.h
 
 # the file below contains the actual rules
 
