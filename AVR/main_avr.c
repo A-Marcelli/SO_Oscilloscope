@@ -1,6 +1,7 @@
 #include <util/delay.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -9,7 +10,9 @@
 #include "./avr_common/my_adc.h"
 #include "./avr_common/my_variables.h"
 
-#define STOP 10
+//macro
+#define STOP 5
+//#define max_conv 20             //prova, da spostare
 
 //global variables
 volatile uint8_t byte_rec = 0;   //1=ricevuto
@@ -19,7 +22,11 @@ volatile uint8_t ocr_int  = 0;   //1=ocr interrupt
 
 volatile uint8_t buffer_rx;      //variabile di appoggio
 volatile uint8_t buffer_tx[2];   //variabile di appoggio
-volatile uint32_t num_int = 0;    //numero di interrupt del timer5 accaduti, utilizzato per attivare la condizione di stop
+uint8_t *buffer;
+volatile uint32_t num_int  = 0;    //numero di interrupt del timer5 accaduti, utilizzato per attivare la condizione di stop
+volatile uint32_t num_conv = 0;    //numero di conversioni portate a termine, utilizzato nella buffered mode per riempire il vettore
+volatile uint32_t len               = 0;
+uint32_t max_conv          = 0;
 
 volatile uint8_t adc_number;     //numero di canali adc da utilizzare
 volatile uint8_t frequency;      //numero di ogni quanti ms si effettuerà un sampling
@@ -89,14 +96,17 @@ int main(void){
     timer_init();      //inizializzazione timer -> funzione nel file my_adc.c
     sei();             //interrupt abilitati
 
+    
+    
+
     state = 0;
+
 
     while(1){
 
         state_machine();
 
     }
-
 }
 
 
@@ -122,6 +132,8 @@ void state_machine(void){
             frequency = buffer_rx;
             freq_set(frequency);     //setto la frequenza selezionata, max 255 ms cosi!!!!!!! (nel programma pc controlla sia frequency >0!)
 
+            max_conv = (uint32_t) (STOP * 1000) / frequency;
+            len = max_conv * 2 * adc_number;
             byte_rec = 0;
             state = 3;
         }
@@ -130,8 +142,10 @@ void state_machine(void){
     case 3:
         if(byte_rec == 1){
             mode = buffer_rx;
-            //mode_set(mode);          //setto la modalità selezionata
-            //da finire
+            if(mode == 2){
+                buffer = (uint8_t *) malloc(sizeof(uint8_t) * len);
+            }
+
             byte_rec = 0;
             state = 4;
         }
@@ -140,11 +154,8 @@ void state_machine(void){
     case 4:
         if(byte_rec == 1){
             //trigger ricevuto
-
-            //trigger = buffer_rx;
-            //da finire
             byte_rec = 0;
-            byte_tra = 1;           //prima volta inizializzata a mano
+            byte_tra = 1;           //prima volta inizializzato a mano
 
             cli();
             TCNT5 = 0;
@@ -167,12 +178,6 @@ void state_machine(void){
             break;
         }
 
-        //if(conv_fin == 1){
-        //    //da eliminare
-        //
-        //    conv_fin = 0;
-        //}
-
         if(ocr_int == 1){
             //conversione e invio
             for(uint8_t var = 0; var < adc_number;var++){
@@ -180,13 +185,8 @@ void state_machine(void){
                 adc_conv(var);
 
                 //invio
-                //while ( ! byte_tra);
                 UART_putChar(buffer_tx[0]);
-                //byte_tra = 0;
-
-                //while ( ! byte_tra);
                 UART_putChar(buffer_tx[1]);
-                //byte_tra = 0;
 
             }
             ocr_int = 0;
@@ -197,13 +197,37 @@ void state_machine(void){
 
     case 6:
         /* buffered mode */
-        if(num_int == STOP*((uint8_t) 1000/frequency)){   //se sono passati STOP secondi, stop conversioni e fine programma num_int*frequency >= STOP*1000
-            //INVIA DATI
+        if(num_conv == max_conv){
+            //invia tutto e azzera num_conv
+            UART_putString(buffer);
+
+            num_conv = 0;
+        }
+
+        if((uint16_t) num_int*frequency >= (uint16_t) STOP*1000){   //se sono passati STOP secondi, stop conversioni e fine programma
+            //INVIA QUELLO CHE è RIMASTO NEL BUFFER!!
+            //UART_putChar((uint8_t ) num_conv);
             cli();
             state = 7;
             break;
         }
 
+        if(ocr_int == 1){
+            //converti e salva
+            for(uint8_t var = 0; var < adc_number;var++){
+                //conversione
+                adc_conv(var);
+
+                //storage
+                buffer[num_conv*2 + 0 + max_conv*2*var] = buffer_tx[0];
+                buffer[num_conv*2 + 1 + max_conv*2*var] = buffer_tx[1]; 
+                               
+            }
+            num_conv++;
+            ocr_int = 0;
+        }
+
+        
 
         break;
 

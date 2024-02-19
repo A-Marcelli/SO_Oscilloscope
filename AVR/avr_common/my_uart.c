@@ -47,8 +47,9 @@ uint8_t UART_getString(uint8_t* buf){
 }
 
 void UART_putString(uint8_t* buf){
-  while(*buf){
+  for(uint32_t num = 0;num<len;num++){
     UART_putChar(*buf);
+    //UART_putChar((uint8_t ) len);
     ++buf;
   }
 }
