@@ -40,11 +40,31 @@ int serial_set_interface_attribs(int fd, int speed, int parity) {
   }
   cfsetospeed (&tty, speed);
   cfsetispeed (&tty, speed);
-  cfmakeraw(&tty);
+  //cfmakeraw(&tty);
   // enable reading CONTROLLA FLAG
-  tty.c_cflag &= ~(PARENB | PARODD);               // shut off parity
-  tty.c_cflag |= parity;
-  tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;      // 8-bit chars
+  //tty.c_cflag &= ~(PARENB | PARODD);               // shut off parity
+  //tty.c_cflag |= parity;
+  //tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;      // 8-bit chars
+
+  //PROVA
+  // Set other serial port settings
+    tty.c_cflag &= ~PARENB; // No parity
+    tty.c_cflag &= ~CSTOPB; // 1 stop bit
+    tty.c_cflag &= ~CSIZE;
+    tty.c_cflag |= CS8; // 8 data bits
+    tty.c_cflag &= ~CRTSCTS; // No hardware flow control
+    tty.c_cflag |= CREAD | CLOCAL; // Enable receiver, ignore modem control lines
+
+    // Set input mode (non-canonical, no echo)
+    tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+
+    // Set raw mode (no input processing)
+    tty.c_iflag &= ~(IXON | IXOFF | IXANY); // Disable software flow control
+    tty.c_iflag &= ~(INLCR | ICRNL); // Disable translation of newline characters
+    tty.c_iflag &= ~(IGNCR | IGNBRK); // Disable ignoring of carriage return and break characters
+
+    // Set output mode (no output processing)
+    tty.c_oflag &= ~OPOST; // Raw output
 
   if (tcsetattr (fd, TCSANOW, &tty) != 0) {
     printf ("error %d from tcsetattr", errno);
@@ -60,9 +80,9 @@ void serial_set_blocking(int fd, int should_block) {
       printf ("error %d from tggetattr", errno);
       return;
   }
-
-  tty.c_cc[VMIN]  = should_block ? 1 : 0;
-  tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
+  tty.c_cc[VMIN]  = 78;
+  //tty.c_cc[VMIN]  = should_block ? 1 : 0;
+  tty.c_cc[VTIME] = 10;            // 0.5 seconds read timeout
 
   if (tcsetattr (fd, TCSANOW, &tty) != 0)
     printf ("error %d setting term attributes", errno);

@@ -11,7 +11,7 @@
 #include "./avr_common/my_variables.h"
 
 //macro
-#define STOP 5
+#define STOP 10
 //#define max_conv 20             //prova, da spostare
 
 //global variables
@@ -27,6 +27,7 @@ volatile uint32_t num_int  = 0;    //numero di interrupt del timer5 accaduti, ut
 volatile uint32_t num_conv = 0;    //numero di conversioni portate a termine, utilizzato nella buffered mode per riempire il vettore
 volatile uint32_t len               = 0;
 uint32_t max_conv          = 0;
+volatile uint32_t prova = 0;
 
 volatile uint8_t adc_number;     //numero di canali adc da utilizzare
 volatile uint8_t frequency;      //numero di ogni quanti ms si effettuerà un sampling
@@ -200,27 +201,34 @@ void state_machine(void){
         if(num_conv == max_conv){
             //invia tutto e azzera num_conv
             UART_putString(buffer);
-
-            num_conv = 0;
-        }
-
-        if((uint16_t) num_int*frequency >= (uint16_t) STOP*1000){   //se sono passati STOP secondi, stop conversioni e fine programma
-            //INVIA QUELLO CHE è RIMASTO NEL BUFFER!!
-            //UART_putChar((uint8_t ) num_conv);
             cli();
             state = 7;
             break;
+            //num_conv = 0;
         }
+
+        //if((uint16_t) num_int*frequency >= (uint16_t) STOP*1000){   //se sono passati STOP secondi, stop conversioni e fine programma
+        //    //INVIA QUELLO CHE è RIMASTO NEL BUFFER!!
+        //    //UART_putChar((uint8_t ) num_conv);
+        //    cli();
+        //    state = 7;
+        //    break;
+        //}
 
         if(ocr_int == 1){
             //converti e salva
+            
             for(uint8_t var = 0; var < adc_number;var++){
                 //conversione
                 adc_conv(var);
 
                 //storage
-                buffer[num_conv*2 + 0 + max_conv*2*var] = buffer_tx[0];
-                buffer[num_conv*2 + 1 + max_conv*2*var] = buffer_tx[1]; 
+                //buffer[num_conv*2 + 0 + max_conv*2*var] = buffer_tx[0];  //prima low
+                //buffer[num_conv*2 + 1 + max_conv*2*var] = buffer_tx[1];  //poi high
+                buffer[num_conv*2 + 0 + max_conv*2*var] = (uint8_t ) prova;  //PROVA
+                prova++;
+                buffer[num_conv*2 + 1 + max_conv*2*var] = (uint8_t ) prova;  //PROVA
+                prova++;
                                
             }
             num_conv++;
