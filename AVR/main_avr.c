@@ -42,8 +42,8 @@ volatile uint8_t received_setting; //variabile per tenere conto delle impostazio
 volatile uint8_t state;            //contiene lo stato in cui mi trovo:
                                    //000 = inizializzazione
                                    //001 = aspettando numero dispositivi
-                                   //010 = aspettando frequenza
-                                   //011 = aspettando modalità di esecuzione
+                                   //010 = aspettando modalità di esecuzione
+                                   //011 = aspettando frequency
                                    //100 = se buffered mode, aspettando trigger
                                    //101 = esecuzione continous sampling
                                    //110 = esecuzione buffered mode
@@ -127,26 +127,24 @@ void state_machine(void){
             state = 2;
         }
         break;
-
     case 2:
         if(byte_rec == 1){
-            frequency = buffer_rx;
-            freq_set(frequency);     //setto la frequenza selezionata, max 255 ms cosi!!!!!!! (nel programma pc controlla sia frequency >0!)
+            mode = buffer_rx;
 
-            max_conv = (uint32_t) (STOP * 1000) / frequency;
-            len = max_conv * 2 * adc_number;
             byte_rec = 0;
             state = 3;
         }
         break;
-
     case 3:
         if(byte_rec == 1){
-            mode = buffer_rx;
+            frequency = buffer_rx;
+            freq_set(frequency);     //setto la frequenza selezionata, max 255 ms cosi!!!!!!!
+
+            max_conv = (uint32_t) (STOP * 1000) / frequency;
+            len = max_conv * 2 * adc_number;
             if(mode == 2){
                 buffer = (uint8_t *) malloc(sizeof(uint8_t) * len);
             }
-
             byte_rec = 0;
             state = 4;
         }
@@ -234,14 +232,11 @@ void state_machine(void){
                 //buffer[num_conv*2 + 0 + max_conv*2*var] = (uint8_t ) prova;  //PROVA
                 //prova++;
                 //buffer[num_conv*2 + 1 + max_conv*2*var] = (uint8_t ) 1;  //PROVA
-                //prova++;
-                               
+                //prova++;                
             }
             num_conv++;
             ocr_int = 0;
         }
-
-        
 
         break;
 
