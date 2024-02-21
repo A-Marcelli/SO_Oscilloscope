@@ -7,6 +7,7 @@
 #define SPEED 19200
 #define PORT "/dev/ttyACM0"
 #define STOP 10
+#define VREF 2.86
 
 int main(int argc, char** argv) {
   if (argc<2) {
@@ -26,7 +27,8 @@ int main(int argc, char** argv) {
   uint32_t len            = 0;
   uint32_t max_conv       = 0;
   FILE *fd_out;
-  uint8_t *buffer;
+  uint8_t *buffer, *buffer_var;
+  float *buffer_out;
   
   
   printf( "opening serial device [%s] ... ", filename);
@@ -94,6 +96,8 @@ int main(int argc, char** argv) {
   max_conv = (uint32_t) (STOP * 1000) / frequency_out;
   len = max_conv * 2 * adc_num;
   buffer = (uint8_t *) malloc(sizeof(uint8_t) * len);
+  buffer_out = (float *) malloc(sizeof(float) * (len/2));
+  buffer_var = buffer;
 
   while_var = 0;
   while(! while_var){
@@ -128,23 +132,54 @@ int main(int argc, char** argv) {
   }
   
   if(mode == 1){
-
-    while(1){
-
+    //sfrutto il fatto che invia 2*adc_num byte per volta prima di aspettare l'interrupt successivo
+    int n_read = 0;
+    for(int i=0;i<(len/(2*adc_num));i++){
+      
+      n_read += read(fd, buffer_var, 2*adc_num);   //devo printare subito i valori che arrivano, dopo averli ricostruiti
+      buffer_var += 2*adc_num;
+      //printf("%d", frequency_out*i); //prova
+      fprintf(fd_out,"%d", frequency_out*i);
+      for(int j=0;j<adc_num;j++){
+        fprintf(fd_out," %f", ((( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]) * VREF / 1024);
+        //printf(" %f", ((( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]) * VREF / 1024);
+      }
+      //printf("\n");   //prova
+      fprintf(fd_out,"\n");
     }
+    printf("\n\%d\n", len);  //prova
+    printf("\n\%d\n", n_read); //prova
 
   }
   
   if(mode == 2){  //buffered mode
 
-    
-    //int n_read=read(fd, buffer, len);
-    int n_read=read(fd, buffer, len);
-    printf("\n\%d\n", len);
-    printf("\n\%d\n", n_read);
-    for (int i=0; i<len; i+=2) {
+    int n_read = 0;
+    for(int i=0;i<((uint32_t) len/64 );i++){       //read legge solo 64 bytes per volta
+      
+      n_read += read(fd, buffer_var, 64);
+      buffer_var += 64;
+
+    }
+
+    n_read += read(fd,buffer_var,(len%64));         //restante parte del buffer
+
+
+    //printf("\n\%d\n", len);  //prova
+    //printf("\n\%d\n", len/64);  //prova
+    //printf("\n\%d\n", n_read); //prova
+
+
+    for(int i = 0; i<(len/2); i++){
+        buffer_out[i] = ((( (uint16_t) buffer[(2*i)+1]) <<8) | buffer[2*i]) * VREF / 1024;   //unisco i byte high e low dell'adc e trasformo in Volt
+    }
+
+    //free(buffer);   //controlla come si libera un array malloc
+
+    for (int i=1; i<(len/2); i++) {             //IL PRIMO VALORE CONTIENE UN RISULTATO CASUALE, è DA SCARTARE
       //fprintf(fd_out,"%d %hhx%hhx\n", frequency_out*(i/2), buffer[i+1], buffer[i]);
-      printf("%d %02hhx%02hhx\n", frequency_out*(i/2), buffer[i+1], buffer[i]);
+      //printf("%d %02hhx%02hhx\n", frequency_out*(i/2), buffer[i+1], buffer[i]);
+      printf("%d %f\n", frequency_out*(i%(len/(2*adc_num))), buffer_out[i]);
     }
   }
 

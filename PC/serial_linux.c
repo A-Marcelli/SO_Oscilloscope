@@ -80,9 +80,9 @@ void serial_set_blocking(int fd, int should_block) {
       printf ("error %d from tggetattr", errno);
       return;
   }
-  tty.c_cc[VMIN]  = 78;
+  tty.c_cc[VMIN]  = 64;
   //tty.c_cc[VMIN]  = should_block ? 1 : 0;
-  tty.c_cc[VTIME] = 10;            // 0.5 seconds read timeout
+  tty.c_cc[VTIME] = 3;            // 0.5 seconds read timeout
 
   if (tcsetattr (fd, TCSANOW, &tty) != 0)
     printf ("error %d setting term attributes", errno);

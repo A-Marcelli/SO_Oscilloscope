@@ -173,7 +173,8 @@ void state_machine(void){
 
     case 5:
         /* continous sampling */
-        if((uint16_t) num_int*frequency >= (uint16_t) STOP*1000){   //se sono passati STOP secondi, stop conversioni e fine programma
+        //if((uint16_t) num_int*frequency >= (uint16_t) STOP*1000){   //se sono passati STOP secondi, stop conversioni e fine programma
+        if(num_conv == max_conv){
             cli();
             state = 7;
             break;
@@ -188,8 +189,13 @@ void state_machine(void){
                 //invio
                 UART_putChar(buffer_tx[0]);
                 UART_putChar(buffer_tx[1]);
+                //UART_putChar(prova);   //prova
+                //prova++;
+                //UART_putChar(prova);   //prova
+                //prova++;
 
             }
+            num_conv++;
             ocr_int = 0;
         }
 
@@ -223,12 +229,12 @@ void state_machine(void){
                 adc_conv(var);
 
                 //storage
-                //buffer[num_conv*2 + 0 + max_conv*2*var] = buffer_tx[0];  //prima low
-                //buffer[num_conv*2 + 1 + max_conv*2*var] = buffer_tx[1];  //poi high
-                buffer[num_conv*2 + 0 + max_conv*2*var] = (uint8_t ) prova;  //PROVA
-                prova++;
-                buffer[num_conv*2 + 1 + max_conv*2*var] = (uint8_t ) prova;  //PROVA
-                prova++;
+                buffer[num_conv*2 + 0 + max_conv*2*var] = buffer_tx[0];  //prima low
+                buffer[num_conv*2 + 1 + max_conv*2*var] = buffer_tx[1];  //poi high
+                //buffer[num_conv*2 + 0 + max_conv*2*var] = (uint8_t ) prova;  //PROVA
+                //prova++;
+                //buffer[num_conv*2 + 1 + max_conv*2*var] = (uint8_t ) 1;  //PROVA
+                //prova++;
                                
             }
             num_conv++;
