@@ -7,3 +7,4 @@ extern volatile uint8_t frequency;
 extern volatile uint8_t mode; 
 extern volatile uint8_t state;  
 extern volatile uint8_t byte_rec;
+extern volatile uint8_t prova;

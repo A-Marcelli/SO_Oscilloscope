@@ -157,8 +157,8 @@ int main(int argc, char** argv) {
       //printf("\n");   //prova
       fprintf(fd_out,"\n");
     }
-    printf("\n\%d\n", len);  //prova
-    printf("\n\%d\n", n_read); //prova
+    printf("\n%d\n", len);  //prova
+    printf("\n%d\n", n_read); //prova
 
   }
   
@@ -186,10 +186,15 @@ int main(int argc, char** argv) {
 
     //free(buffer);   //controlla come si libera un array malloc
     printf("Fine conversione, ora stampo!\n");
-    for (int i=1; i<(len/2); i++) {             //IL PRIMO VALORE CONTIENE UN RISULTATO CASUALE, è DA SCARTARE
+    for (int i=1; i<max_conv; i++) {             //IL PRIMO VALORE CONTIENE UN RISULTATO CASUALE, è DA SCARTARE
       //fprintf(fd_out,"%d %hhx%hhx\n", frequency_in*(i/2), buffer[i+1], buffer[i]);
       //printf("%d %02hhx%02hhx\n", frequency_in*(i/2), buffer[i+1], buffer[i]);
-      printf("%d %f\n", frequency_in*(i % max_conv), buffer_out[i]);
+      fprintf(fd_out,"%d", frequency_in*i);
+      for(int j=0; j<adc_num; j++){
+        fprintf(fd_out," %f", buffer_out[i+j*max_conv]);
+      }
+      fprintf(fd_out,"\n");
+      //printf("%d %f\n", frequency_in*(i % max_conv), buffer_out[i]);
     }
   }
 

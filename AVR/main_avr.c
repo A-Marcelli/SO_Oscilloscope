@@ -20,21 +20,21 @@ volatile uint8_t byte_tra = 0;   //1=transmesso
 //volatile uint8_t conv_fin = 0;   //1=conversione adc finita
 volatile uint8_t ocr_int  = 0;   //1=ocr interrupt
 
-volatile uint8_t buffer_rx;      //variabile di appoggio
-volatile uint8_t buffer_tx[2];   //variabile di appoggio
+volatile uint8_t buffer_rx[3];      //variabile di appoggio
+volatile uint8_t buffer_tx[2];      //variabile di appoggio
 uint8_t *buffer;
 volatile uint32_t num_int  = 0;    //numero di interrupt del timer5 accaduti, utilizzato per attivare la condizione di stop
 volatile uint32_t num_conv = 0;    //numero di conversioni portate a termine, utilizzato nella buffered mode per riempire il vettore
-volatile uint32_t len               = 0;
+volatile uint32_t len      = 0;
 uint32_t max_conv          = 0;
-volatile uint32_t prova = 0;
+volatile uint8_t prova = 0;
 
 volatile uint8_t adc_number;     //numero di canali adc da utilizzare
 volatile uint8_t frequency;      //numero di ogni quanti ms si effettuerà un sampling
 volatile uint8_t mode;           //1 = continuous sampling, 2 = buffered mode
 //volatile uint8_t trigger;        //1 = inizia (??)
 
-volatile uint8_t received_setting; //variabile per tenere conto delle impostazioni ricevute:
+//volatile uint8_t received_setting; //variabile per tenere conto delle impostazioni ricevute:
                                    // bit 0: se numero adc ricevuto -> =1
                                    // bit 1: se frequenza ricevuta -> =1
                                    // bit 2: se modalità di operazione ricevuta -> =1
@@ -68,7 +68,8 @@ ISR(TIMER5_COMPA_vect)
 ISR(USART0_RX_vect)
 {
     //Interrupt che si attiva quando è stato ricevuto un byte
-    buffer_rx = UDR0;
+    buffer_rx[prova] = UDR0;
+    prova++;
     byte_rec = 1;
 }
 
@@ -120,7 +121,7 @@ void state_machine(void){
 
     case 1:
         if(byte_rec == 1){
-            adc_number = buffer_rx;
+            adc_number = buffer_rx[0];
             adc_sel(adc_number);     //setto gli adc selezionati
 
             byte_rec = 0;
@@ -129,7 +130,7 @@ void state_machine(void){
         break;
     case 2:
         if(byte_rec == 1){
-            mode = buffer_rx;
+            mode = buffer_rx[1];
 
             byte_rec = 0;
             state = 3;
@@ -137,7 +138,7 @@ void state_machine(void){
         break;
     case 3:
         if(byte_rec == 1){
-            frequency = buffer_rx;
+            frequency = buffer_rx[2];
             freq_set(frequency);     //setto la frequenza selezionata, max 255 ms cosi!!!!!!!
 
             max_conv = (uint32_t) (STOP * 1000) / frequency;
