@@ -8,6 +8,7 @@
 #define PORT "/dev/ttyACM0"
 #define STOP 10
 #define VREF 2.86
+#define BUFFER_MAX 7750
 
 int main(int argc, char** argv) {
   if (argc<2) {
@@ -77,6 +78,12 @@ int main(int argc, char** argv) {
     }
   }
 
+  fprintf(fd_out,"#Time");
+  for(int i = 0; i<adc_num;i++){
+    fprintf(fd_out,"\tChannel %d", i);
+  }
+  fprintf(fd_out,"\n");
+
   while_var = 0;
   while(! while_var){
     printf("Che modalità si vuole utilizzare?\n1 -> continous sampling\n2 -> buffered mode\n");
@@ -96,7 +103,9 @@ int main(int argc, char** argv) {
   int f_min = 1;          //frequenza massima (/tempo minimo)
 
   if(mode==1){
-    f_min=adc_num+1;  //trovato empiricamente che se il tempo è più basso di questo allora ci mette più di STOP secondi in modalità continous.
+    f_min = adc_num + 1;  //trovato empiricamente che se il tempo è più basso di questo allora ci mette più di STOP secondi in modalità continous.
+  } else if(mode == 2){
+    f_min = ((uint32_t) STOP * 1000 * 2 * adc_num / BUFFER_MAX) + 1;     //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
   }
 
   while_var = 0;
@@ -123,8 +132,6 @@ int main(int argc, char** argv) {
   buffer_out = (float *) malloc(sizeof(float) * (len/2));
   buffer_var = buffer;
 
-
-
   while_var = 0;
   while(! while_var){
     printf("Selezionare \"1\" per far partire le conversioni\n");
@@ -143,6 +150,7 @@ int main(int argc, char** argv) {
   
   if(mode == 1){
     //sfrutto il fatto che invia 2*adc_num byte per volta prima di aspettare l'interrupt successivo
+    fprintf(fd_out,"#");          //la prima conversione va scartata, metto un "#" che gnuplot usa per indicare un commento
     int n_read = 0;
     for(int i=0;i<max_conv;i++){
       
@@ -157,8 +165,8 @@ int main(int argc, char** argv) {
       //printf("\n");   //prova
       fprintf(fd_out,"\n");
     }
-    printf("\n%d\n", len);  //prova
-    printf("\n%d\n", n_read); //prova
+    //printf("\n%d\n", len);  //prova
+    //printf("\n%d\n", n_read); //prova
 
   }
   
@@ -175,18 +183,12 @@ int main(int argc, char** argv) {
     n_read += read(fd,buffer_var,(len%64));         //restante parte del buffer
 
 
-    //printf("\n\%d\n", len);  //prova
-    //printf("\n\%d\n", len/64);  //prova
-    //printf("\n\%d\n", n_read); //prova
-
-
     for(int i = 0; i<(len/2); i++){
         buffer_out[i] = ((( (uint16_t) buffer[(2*i)+1]) <<8) | buffer[2*i]) * VREF / 1024;   //unisco i byte high e low dell'adc e trasformo in Volt
     }
 
-    //free(buffer);   //controlla come si libera un array malloc
     printf("Fine conversione, ora stampo!\n");
-    for (int i=1; i<max_conv; i++) {             //IL PRIMO VALORE CONTIENE UN RISULTATO CASUALE, è DA SCARTARE
+    for (int i=1; i<max_conv; i++) {             //la prima conversione va scartata
       //fprintf(fd_out,"%d %hhx%hhx\n", frequency_in*(i/2), buffer[i+1], buffer[i]);
       //printf("%d %02hhx%02hhx\n", frequency_in*(i/2), buffer[i+1], buffer[i]);
       fprintf(fd_out,"%d", frequency_in*i);
@@ -198,12 +200,10 @@ int main(int argc, char** argv) {
     }
   }
 
+  free(buffer);
+  free(buffer_out);
+  fclose(fd_out);
+
   return 0;
 
-  //while (1) {
-    //int n_read=read(fd, buf, bsize);
-    //for (int i=0; i<n_read; ++i) {
-    //  printf("%c", buf[i]);
-    //}
-  //}
 }
