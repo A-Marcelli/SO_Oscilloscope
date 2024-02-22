@@ -5,7 +5,7 @@ void adc_init(void){
 	//inizializza adc qui
 	//da inizializzare: ADMUX, ADCSRA, ADCSRB,DIDR0, DIDR2
 
-	ADMUX |= (1 << REFS0); //da modificare in seguito per decidere quale/i adc usare. AVCC da collegare hardware!
+	ADMUX |= (1 << REFS0) | (1 << REFS1); //da modificare in seguito per decidere quale/i adc usare. AVCC da collegare hardware!
 
 	ADCSRA |= (1 << ADEN);
 

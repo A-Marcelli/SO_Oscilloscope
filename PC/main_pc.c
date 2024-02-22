@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #define SPEED 19200
-#define PORT "/dev/ttyACM1"
+#define PORT "/dev/ttyACM0"
 #define STOP 10
 #define VREF 2.86
 

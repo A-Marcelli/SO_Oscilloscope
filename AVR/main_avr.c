@@ -232,7 +232,7 @@ void state_machine(void){
                 buffer[num_conv*2 + 1 + max_conv*2*var] = buffer_tx[1];  //poi high
                 //buffer[num_conv*2 + 0 + max_conv*2*var] = (uint8_t ) prova;  //PROVA
                 //prova++;
-                //buffer[num_conv*2 + 1 + max_conv*2*var] = (uint8_t ) 1;  //PROVA
+                //buffer[num_conv*2 + 1 + max_conv*2*var] = (uint8_t ) prova;  //PROVA
                 //prova++;                
             }
             num_conv++;
