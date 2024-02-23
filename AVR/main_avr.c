@@ -139,10 +139,15 @@ void state_machine(void){
     case 3:
         if(byte_rec == 1){
             frequency = buffer_rx[2];
-            freq_set(frequency);     //setto la frequenza selezionata, max 255 ms cosi!!!!!!!
+            freq_set(frequency);     //setto la frequenza selezionata, max 255 ms
 
             max_conv = (uint32_t) (STOP * 1000) / frequency;
+        #ifdef APPROX
+            len = max_conv * adc_number;
+        #else
             len = max_conv * 2 * adc_number;
+        #endif
+
             if(mode == 2){
                 buffer = (uint8_t *) malloc(sizeof(uint8_t) * len);
             }
@@ -186,8 +191,14 @@ void state_machine(void){
                 adc_conv(var);
 
                 //invio
+            #ifdef APPROX
+                UART_putChar(buffer_tx[0]);
+                //UART_putChar(prova);     //prova
+                //prova++;
+            #else
                 UART_putChar(buffer_tx[0]);
                 UART_putChar(buffer_tx[1]);
+            #endif
                 //UART_putChar(prova);   //prova
                 //prova++;
                 //UART_putChar(prova);   //prova
@@ -207,18 +218,11 @@ void state_machine(void){
             //invia tutto e azzera num_conv
             UART_putString(buffer);
             cli();
+            free(buffer);
             state = 7;
             break;
             //num_conv = 0;
         }
-
-        //if((uint16_t) num_int*frequency >= (uint16_t) STOP*1000){   //se sono passati STOP secondi, stop conversioni e fine programma
-        //    //INVIA QUELLO CHE è RIMASTO NEL BUFFER!!
-        //    //UART_putChar((uint8_t ) num_conv);
-        //    cli();
-        //    state = 7;
-        //    break;
-        //}
 
         if(ocr_int == 1){
             //converti e salva
@@ -228,8 +232,14 @@ void state_machine(void){
                 adc_conv(var);
 
                 //storage
+            #ifdef APPROX
+                buffer[num_conv + max_conv*var] = buffer_tx[0];
+                //buffer[num_conv + max_conv*var] = (uint8_t ) prova;     //PROVA
+                //prova++;                                                //PROVA
+            #else
                 buffer[num_conv*2 + 0 + max_conv*2*var] = buffer_tx[0];  //prima low
                 buffer[num_conv*2 + 1 + max_conv*2*var] = buffer_tx[1];  //poi high
+            #endif
                 //buffer[num_conv*2 + 0 + max_conv*2*var] = (uint8_t ) prova;  //PROVA
                 //prova++;
                 //buffer[num_conv*2 + 1 + max_conv*2*var] = (uint8_t ) prova;  //PROVA

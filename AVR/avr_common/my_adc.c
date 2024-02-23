@@ -3,10 +3,12 @@
 
 void adc_init(void){
 	//inizializza adc qui
-	//da inizializzare: ADMUX, ADCSRA, ADCSRB,DIDR0, DIDR2
 
+#ifdef APPROX
+	ADMUX |= (1 << REFS0) | (1 << REFS1) | (1<<ADLAR);   //left adjusted data, leggerò solo gli 8 bit più significativi del risultato (su 10 disponibili), contenuti in ADCH
+#else
 	ADMUX |= (1 << REFS0) | (1 << REFS1); //da modificare in seguito per decidere quale/i adc usare. AVCC da collegare hardware!
-
+#endif
 	ADCSRA |= (1 << ADEN);
 
 	//gli altri andranno settati dopo aver ricevuto le impostazioni dal pc
@@ -47,11 +49,15 @@ void freq_set(uint8_t frequency){
 
 void adc_conv(uint8_t var){
 
-	ADMUX |= (var & 0x07);   //seleziono il canale da cui leggere
+	ADMUX = (ADMUX & 0xf8) | (var & 0x07);   //seleziono il canale da cui leggere
 	ADCSRA |= (1<<ADSC);     //faccio partire la conversione
 
 	while(ADCSRA & (1<<ADSC)); //aspetta che finisca la conversione
+
+#ifdef APPROX
+	buffer_tx[0] = ADCH;
+#else
 	buffer_tx[0] = ADCL;
 	buffer_tx[1] = ADCH;
-
+#endif
 }

@@ -9,6 +9,7 @@
 #define STOP 10
 #define VREF 2.86
 #define BUFFER_MAX 7750
+#define APPROX
 
 int main(int argc, char** argv) {
   if (argc<2) {
@@ -102,11 +103,19 @@ int main(int argc, char** argv) {
 
   int f_min = 1;          //frequenza massima (/tempo minimo)
 
+#ifdef APPROX
+  if(mode==1){
+    f_min = ((uint8_t) adc_num/2) + 1;  //trovato empiricamente che se il tempo è più basso di questo allora ci mette più di STOP secondi in modalità continous.
+  } else if(mode == 2){
+    f_min = ((uint32_t) STOP * 1000 * adc_num / BUFFER_MAX) + 1;     //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
+  }
+#else
   if(mode==1){
     f_min = adc_num + 1;  //trovato empiricamente che se il tempo è più basso di questo allora ci mette più di STOP secondi in modalità continous.
   } else if(mode == 2){
     f_min = ((uint32_t) STOP * 1000 * 2 * adc_num / BUFFER_MAX) + 1;     //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
   }
+#endif
 
   while_var = 0;
   while(! while_var){
@@ -127,9 +136,15 @@ int main(int argc, char** argv) {
   }
 
   max_conv = (uint32_t) (STOP * 1000) / frequency_out;
+#ifdef APPROX
+  len = max_conv * adc_num;
+  buffer_out = (float *) malloc(sizeof(float) * len);
+#else
   len = max_conv * 2 * adc_num;
-  buffer = (uint8_t *) malloc(sizeof(uint8_t) * len);
   buffer_out = (float *) malloc(sizeof(float) * (len/2));
+#endif
+
+  buffer = (uint8_t *) malloc(sizeof(uint8_t) * len);
   buffer_var = buffer;
 
   while_var = 0;
@@ -149,9 +164,22 @@ int main(int argc, char** argv) {
   }
   
   if(mode == 1){
-    //sfrutto il fatto che invia 2*adc_num byte per volta prima di aspettare l'interrupt successivo
+    //sfrutto il fatto che invia 2*adc_num (o adc_num in modalità APPROX) byte per volta prima di aspettare l'interrupt successivo
     fprintf(fd_out,"#");          //la prima conversione va scartata, metto un "#" che gnuplot usa per indicare un commento
     int n_read = 0;
+
+#ifdef APPROX
+    for(int i=0;i<max_conv;i++){
+      
+      n_read += read(fd, buffer_var, adc_num);   //devo printare subito i valori che arrivano, dopo averli ricostruiti
+      buffer_var += adc_num;
+      fprintf(fd_out,"%d", frequency_in*i);
+      for(int j=0;j<adc_num;j++){
+        fprintf(fd_out,"\t%f",  buffer[j+i*adc_num] * VREF / 1024);
+      }
+      fprintf(fd_out,"\n");
+    }
+#else
     for(int i=0;i<max_conv;i++){
       
       n_read += read(fd, buffer_var, 2*adc_num);   //devo printare subito i valori che arrivano, dopo averli ricostruiti
@@ -159,12 +187,13 @@ int main(int argc, char** argv) {
       //printf("%d", frequency_in*i); //prova
       fprintf(fd_out,"%d", frequency_in*i);
       for(int j=0;j<adc_num;j++){
-        fprintf(fd_out," %f", ((( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]) * VREF / 1024);  //dovresti saltare il primo valore
+        fprintf(fd_out,"\t%f", ((( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]) * VREF / 1024);
         //printf(" %f", ((( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]) * VREF / 1024);
       }
       //printf("\n");   //prova
       fprintf(fd_out,"\n");
     }
+#endif
     //printf("\n%d\n", len);  //prova
     //printf("\n%d\n", n_read); //prova
 
@@ -182,10 +211,16 @@ int main(int argc, char** argv) {
 
     n_read += read(fd,buffer_var,(len%64));         //restante parte del buffer
 
-
+#ifdef APPROX
+    for(int i = 0; i<len; i++){
+        buffer_out[i] = buffer[(i)] * VREF / 1024;   //unisco i byte high e low dell'adc e trasformo in Volt
+    }
+#else
     for(int i = 0; i<(len/2); i++){
         buffer_out[i] = ((( (uint16_t) buffer[(2*i)+1]) <<8) | buffer[2*i]) * VREF / 1024;   //unisco i byte high e low dell'adc e trasformo in Volt
     }
+#endif
+    
 
     printf("Fine conversione, ora stampo!\n");
     for (int i=1; i<max_conv; i++) {             //la prima conversione va scartata
@@ -193,7 +228,7 @@ int main(int argc, char** argv) {
       //printf("%d %02hhx%02hhx\n", frequency_in*(i/2), buffer[i+1], buffer[i]);
       fprintf(fd_out,"%d", frequency_in*i);
       for(int j=0; j<adc_num; j++){
-        fprintf(fd_out," %f", buffer_out[i+j*max_conv]);
+        fprintf(fd_out,"\t%f", buffer_out[i+j*max_conv]);
       }
       fprintf(fd_out,"\n");
       //printf("%d %f\n", frequency_in*(i % max_conv), buffer_out[i]);

@@ -1,6 +1,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+#define APPROX
 
 void adc_init(void);
 void timer_init(void);
