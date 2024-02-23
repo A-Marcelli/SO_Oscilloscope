@@ -14,43 +14,14 @@ void UART_init(void) {
 void UART_putChar(uint8_t c){
   // wait for transmission completed
   while ( ! byte_tra);
-  //while ( !(UCSR0A & (1<<UDRE0)) );
   // Start transmission
   UDR0 = c;
   byte_tra = 0;
 }
 
-//uint8_t UART_getChar(void){
-//  // Wait for incoming data, looping on status bit
-//  while ( !(UCSR0A & (1<<RXC0)) );
-//  
-//  // Return the data
-//  return UDR0;   
-//}
-
-//uint8_t UART_getString(uint8_t* buf){
-//  uint8_t* b0=buf; //beginning of buffer
-//  while(1){
-//    uint8_t c=UART_getChar();
-//    *buf=c;
-//    ++buf;
-//    // reading a 0 terminates the string
-//    if (c==0)
-//      return buf-b0;
-//    // reading a \n  or a \r return results
-//    // in forcedly terminating the string
-//    if(c=='\n'||c=='\r'){
-//      *buf=0;
-//      ++buf;
-//      return buf-b0;
-//    }
-//  }
-//}
-
 void UART_putString(uint8_t* buf){
   for(uint32_t num = 0;num<len;num++){
     UART_putChar(*buf);
-    //UART_putChar((uint8_t ) len);
     ++buf;
   }
 }

@@ -7,7 +7,7 @@
 #define SPEED 19200
 #define PORT "/dev/ttyACM0"
 #define STOP 10
-#define VREF 2.86
+#define VREF 2.56
 #define BUFFER_MAX 7750
 #define APPROX
 
@@ -21,14 +21,13 @@ int main(int argc, char** argv) {
   char* filename           = PORT;
   int baudrate             = SPEED;
   uint8_t adc_num          = 0;
-  uint16_t frequency_in    = 0;
-  uint8_t frequency_out   = 0;
-  //uint8_t frequency_out2   = 0;
+  uint8_t frequency        = 0;
   uint8_t mode             = 0;
   uint8_t trigger          = 0;
   uint8_t while_var        = 0;
   uint32_t len             = 0;
   uint32_t max_conv        = 0;
+  uint32_t n_read          = 0;
   FILE *fd_out;
   uint8_t *buffer, *buffer_var;
   float *buffer_out;
@@ -61,8 +60,6 @@ int main(int argc, char** argv) {
     printf ("Success\n");
   }
 
-  //const int bsize=10;
-  //char buf[bsize];
   while_var = 0;
   while(! while_var){
     printf("Quanti canali ADC utilizzare?\nSelezionare un numero da 1 a 8:\n");
@@ -79,7 +76,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  fprintf(fd_out,"#Time");
+  fprintf(fd_out,"#Time");                       //Nel file di output inserisco il titolo delle colonne di dati
   for(int i = 0; i<adc_num;i++){
     fprintf(fd_out,"\tChannel %d", i);
   }
@@ -101,17 +98,17 @@ int main(int argc, char** argv) {
     }
   }
 
-  int f_min = 1;          //frequenza massima (/tempo minimo)
+  uint32_t f_min = 1;          //tempo minimo (1/frequenza massima)
 
 #ifdef APPROX
   if(mode==1){
     f_min = ((uint8_t) adc_num/2) + 1;  //trovato empiricamente che se il tempo è più basso di questo allora ci mette più di STOP secondi in modalità continous.
   } else if(mode == 2){
-    f_min = ((uint32_t) STOP * 1000 * adc_num / BUFFER_MAX) + 1;     //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
+    f_min = ((uint32_t) STOP * 1000 * adc_num / BUFFER_MAX) + 1;         //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
   }
 #else
   if(mode==1){
-    f_min = adc_num + 1;  //trovato empiricamente che se il tempo è più basso di questo allora ci mette più di STOP secondi in modalità continous.
+    f_min = adc_num + 1;                //trovato empiricamente che se il tempo è più basso di questo allora ci mette più di STOP secondi in modalità continous.
   } else if(mode == 2){
     f_min = ((uint32_t) STOP * 1000 * 2 * adc_num / BUFFER_MAX) + 1;     //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
   }
@@ -120,13 +117,11 @@ int main(int argc, char** argv) {
   while_var = 0;
   while(! while_var){
     printf("Ogni quanti ms deve essere effettuato il sampling?\nSelezionare un valore tra %d e 255:\n", f_min);
-    scanf("%hu", &frequency_in);
+    scanf("%hhu", &frequency);
     while ( getchar() != '\n' );
-    if(frequency_in >= f_min && frequency_in <=255){
-      frequency_out = (uint8_t ) (frequency_in & 0xff);        //low byte
-      //frequency_out2 = (uint8_t ) (frequency_in>>8);            //high byte
-      printf("Hai selezionato 0x%hhx ms\n\n", frequency_out);
-      ssize_t res_freq = write(fd, &frequency_out, 1);          //invia frequency low
+    if(frequency >= f_min && frequency <=255){
+      printf("Hai selezionato 0x%hhx ms\n\n", frequency);
+      ssize_t res_freq = write(fd, &frequency, 1);          //invia frequency low
       if(res_freq != 1){
         printf("ERRORE SU INVIO FREQUENCY\n");
         return -3;
@@ -135,7 +130,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  max_conv = (uint32_t) (STOP * 1000) / frequency_out;
+  max_conv = (uint32_t) (STOP * 1000) / frequency;
 #ifdef APPROX
   len = max_conv * adc_num;
   buffer_out = (float *) malloc(sizeof(float) * len);
@@ -157,7 +152,7 @@ int main(int argc, char** argv) {
       ssize_t res_trig = write(fd, &trigger, 1);               //invia mode
       if(res_trig != 1){
         printf("ERRORE SU INVIO MODE\n");
-        return -3;
+        return -4;
       }
       while_var = 1;
     }
@@ -166,14 +161,13 @@ int main(int argc, char** argv) {
   if(mode == 1){
     //sfrutto il fatto che invia 2*adc_num (o adc_num in modalità APPROX) byte per volta prima di aspettare l'interrupt successivo
     fprintf(fd_out,"#");          //la prima conversione va scartata, metto un "#" che gnuplot usa per indicare un commento
-    int n_read = 0;
 
 #ifdef APPROX
     for(int i=0;i<max_conv;i++){
-      
+  
       n_read += read(fd, buffer_var, adc_num);   //devo printare subito i valori che arrivano, dopo averli ricostruiti
       buffer_var += adc_num;
-      fprintf(fd_out,"%d", frequency_in*i);
+      fprintf(fd_out,"%d", frequency*i);
       for(int j=0;j<adc_num;j++){
         fprintf(fd_out,"\t%f",  buffer[j+i*adc_num] * VREF / 1024);
       }
@@ -184,54 +178,42 @@ int main(int argc, char** argv) {
       
       n_read += read(fd, buffer_var, 2*adc_num);   //devo printare subito i valori che arrivano, dopo averli ricostruiti
       buffer_var += 2*adc_num;
-      //printf("%d", frequency_in*i); //prova
-      fprintf(fd_out,"%d", frequency_in*i);
+      fprintf(fd_out,"%d", frequency*i);
       for(int j=0;j<adc_num;j++){
         fprintf(fd_out,"\t%f", ((( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]) * VREF / 1024);
-        //printf(" %f", ((( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]) * VREF / 1024);
       }
-      //printf("\n");   //prova
       fprintf(fd_out,"\n");
     }
 #endif
-    //printf("\n%d\n", len);  //prova
-    //printf("\n%d\n", n_read); //prova
-
   }
   
   if(mode == 2){  //buffered mode
 
-    int n_read = 0;
-    for(int i=0;i<((uint32_t) len/64 );i++){       //read legge solo 64 bytes per volta
+    for(int i=0;i<((uint32_t) len/64 );i++){       //read legge solo 64 bytes per volta da questa porta
       
       n_read += read(fd, buffer_var, 64);
       buffer_var += 64;
-
     }
 
     n_read += read(fd,buffer_var,(len%64));         //restante parte del buffer
 
 #ifdef APPROX
     for(int i = 0; i<len; i++){
-        buffer_out[i] = buffer[(i)] * VREF / 1024;   //unisco i byte high e low dell'adc e trasformo in Volt
+        buffer_out[i] = buffer[i] * VREF / 1024;   //trasformo in Volt
     }
 #else
     for(int i = 0; i<(len/2); i++){
         buffer_out[i] = ((( (uint16_t) buffer[(2*i)+1]) <<8) | buffer[2*i]) * VREF / 1024;   //unisco i byte high e low dell'adc e trasformo in Volt
     }
 #endif
-    
 
-    printf("Fine conversione, ora stampo!\n");
+    //inizio scrittura su file di ourput
     for (int i=1; i<max_conv; i++) {             //la prima conversione va scartata
-      //fprintf(fd_out,"%d %hhx%hhx\n", frequency_in*(i/2), buffer[i+1], buffer[i]);
-      //printf("%d %02hhx%02hhx\n", frequency_in*(i/2), buffer[i+1], buffer[i]);
-      fprintf(fd_out,"%d", frequency_in*i);
+      fprintf(fd_out,"%d", frequency*i);
       for(int j=0; j<adc_num; j++){
         fprintf(fd_out,"\t%f", buffer_out[i+j*max_conv]);
       }
       fprintf(fd_out,"\n");
-      //printf("%d %f\n", frequency_in*(i % max_conv), buffer_out[i]);
     }
   }
 

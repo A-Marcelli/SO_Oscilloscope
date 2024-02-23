@@ -40,13 +40,7 @@ int serial_set_interface_attribs(int fd, int speed, int parity) {
   }
   cfsetospeed (&tty, speed);
   cfsetispeed (&tty, speed);
-  //cfmakeraw(&tty);
-  // enable reading CONTROLLA FLAG
-  //tty.c_cflag &= ~(PARENB | PARODD);               // shut off parity
-  //tty.c_cflag |= parity;
-  //tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;      // 8-bit chars
-
-  //PROVA
+ 
   // Set other serial port settings
     tty.c_cflag &= ~PARENB; // No parity
     tty.c_cflag &= ~CSTOPB; // 1 stop bit
@@ -81,8 +75,7 @@ void serial_set_blocking(int fd, int should_block) {
       return;
   }
   tty.c_cc[VMIN]  = should_block ? 64 : 0;
-  //tty.c_cc[VMIN]  = should_block ? 1 : 0;
-  tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
+  tty.c_cc[VTIME] = 5;                             // 0.5 seconds read timeout
 
   if (tcsetattr (fd, TCSANOW, &tty) != 0)
     printf ("error %d setting term attributes", errno);

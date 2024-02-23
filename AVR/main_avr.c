@@ -12,12 +12,10 @@
 
 //macro
 #define STOP 10
-//#define max_conv 20             //prova, da spostare
 
 //global variables
 volatile uint8_t byte_rec = 0;   //1=ricevuto
 volatile uint8_t byte_tra = 0;   //1=transmesso
-//volatile uint8_t conv_fin = 0;   //1=conversione adc finita
 volatile uint8_t ocr_int  = 0;   //1=ocr interrupt
 
 volatile uint8_t buffer_rx[3];      //variabile di appoggio
@@ -32,12 +30,6 @@ volatile uint8_t prova = 0;
 volatile uint8_t adc_number;     //numero di canali adc da utilizzare
 volatile uint8_t frequency;      //numero di ogni quanti ms si effettuerà un sampling
 volatile uint8_t mode;           //1 = continuous sampling, 2 = buffered mode
-//volatile uint8_t trigger;        //1 = inizia (??)
-
-//volatile uint8_t received_setting; //variabile per tenere conto delle impostazioni ricevute:
-                                   // bit 0: se numero adc ricevuto -> =1
-                                   // bit 1: se frequenza ricevuta -> =1
-                                   // bit 2: se modalità di operazione ricevuta -> =1
 
 volatile uint8_t state;            //contiene lo stato in cui mi trovo:
                                    //000 = inizializzazione
@@ -50,12 +42,6 @@ volatile uint8_t state;            //contiene lo stato in cui mi trovo:
                                    //111 = fine programma
 
 //interrupts
-
-//ISR(ADC_vect)
-//{
-//    //Interrupt che si attiva a conversione completata
-//    conv_fin = 1;
-//}
 
 ISR(TIMER5_COMPA_vect) 
 {
@@ -72,11 +58,6 @@ ISR(USART0_RX_vect)
     prova++;
     byte_rec = 1;
 }
-
-//ISR(USART0_UDRE_vect)
-//{
-//    //Interrupt che si attiva quando il dato precendente è stato trasmesso, UDR0 vuoto
-//}
 
 ISR(USART0_TX_vect)
 {
@@ -160,11 +141,11 @@ void state_machine(void){
         if(byte_rec == 1){
             //trigger ricevuto
             byte_rec = 0;
-            byte_tra = 1;           //prima volta inizializzato a mano
+            byte_tra = 1;            //prima volta inizializzato a mano
 
             cli();
             TCNT5 = 0;
-            TIMSK5 |= (1 << OCIE5A); // enable the timer interrupt
+            TIMSK5 |= (1 << OCIE5A);  // enable the timer interrupt
             sei();
 
             if(mode == 1){
@@ -177,7 +158,6 @@ void state_machine(void){
 
     case 5:
         /* continous sampling */
-        //if((uint16_t) num_int*frequency >= (uint16_t) STOP*1000){   //se sono passati STOP secondi, stop conversioni e fine programma
         if(num_conv == max_conv){
             cli();
             state = 7;
@@ -193,17 +173,10 @@ void state_machine(void){
                 //invio
             #ifdef APPROX
                 UART_putChar(buffer_tx[0]);
-                //UART_putChar(prova);     //prova
-                //prova++;
             #else
                 UART_putChar(buffer_tx[0]);
                 UART_putChar(buffer_tx[1]);
             #endif
-                //UART_putChar(prova);   //prova
-                //prova++;
-                //UART_putChar(prova);   //prova
-                //prova++;
-
             }
             num_conv++;
             ocr_int = 0;
@@ -234,16 +207,10 @@ void state_machine(void){
                 //storage
             #ifdef APPROX
                 buffer[num_conv + max_conv*var] = buffer_tx[0];
-                //buffer[num_conv + max_conv*var] = (uint8_t ) prova;     //PROVA
-                //prova++;                                                //PROVA
             #else
                 buffer[num_conv*2 + 0 + max_conv*2*var] = buffer_tx[0];  //prima low
                 buffer[num_conv*2 + 1 + max_conv*2*var] = buffer_tx[1];  //poi high
-            #endif
-                //buffer[num_conv*2 + 0 + max_conv*2*var] = (uint8_t ) prova;  //PROVA
-                //prova++;
-                //buffer[num_conv*2 + 1 + max_conv*2*var] = (uint8_t ) prova;  //PROVA
-                //prova++;                
+            #endif              
             }
             num_conv++;
             ocr_int = 0;
@@ -253,15 +220,9 @@ void state_machine(void){
 
     case 7:
         /* fine */
-
         break;
 
     default:
-
         break;
     }
-
-
-
-
 }
