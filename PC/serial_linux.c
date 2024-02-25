@@ -19,6 +19,9 @@ int serial_set_interface_attribs(int fd, int speed, int parity) {
   case 19200:
     speed=B19200;
     break;
+  case 38400:
+    speed=B38400;
+    break;
   case 57600:
     speed=B57600;
     break;

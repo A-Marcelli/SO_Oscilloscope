@@ -14,29 +14,28 @@
 #define STOP 10
 
 //global variables
-volatile uint8_t byte_rec = 0;   //1=ricevuto
+volatile uint8_t byte_rec = 0;
 volatile uint8_t byte_tra = 0;   //1=transmesso
 volatile uint8_t ocr_int  = 0;   //1=ocr interrupt
 
-volatile uint8_t buffer_rx[3];      //variabile di appoggio
+volatile uint8_t buffer_rx[4];      //variabile di appoggio
 volatile uint8_t buffer_tx[2];      //variabile di appoggio
 uint8_t *buffer;
-volatile uint32_t num_int  = 0;    //numero di interrupt del timer5 accaduti, utilizzato per attivare la condizione di stop
 volatile uint32_t num_conv = 0;    //numero di conversioni portate a termine, utilizzato nella buffered mode per riempire il vettore
 volatile uint32_t len      = 0;
 uint32_t max_conv          = 0;
-volatile uint8_t prova = 0;
+uint8_t prova              = 0;    //prova
 
-volatile uint8_t adc_number;     //numero di canali adc da utilizzare
-volatile uint8_t frequency;      //numero di ogni quanti ms si effettuerà un sampling
-volatile uint8_t mode;           //1 = continuous sampling, 2 = buffered mode
+volatile uint8_t adc_number;       //numero di canali adc da utilizzare
+volatile uint16_t frequency;       //numero di ogni quanti decimi di ms si effettuerà un sampling
+volatile uint8_t mode;             //1 = continuous sampling, 2 = buffered mode
 
 volatile uint8_t state;            //contiene lo stato in cui mi trovo:
                                    //000 = inizializzazione
                                    //001 = aspettando numero dispositivi
                                    //010 = aspettando modalità di esecuzione
                                    //011 = aspettando frequency
-                                   //100 = se buffered mode, aspettando trigger
+                                   //100 = aspettando trigger
                                    //101 = esecuzione continous sampling
                                    //110 = esecuzione buffered mode
                                    //111 = fine programma
@@ -47,16 +46,13 @@ ISR(TIMER5_COMPA_vect)
 {
     //Interrupt che si attiva quando il timer matcha l'OCR
     ocr_int = 1;
-    num_int++;
 
 }
 
 ISR(USART0_RX_vect)
 {
     //Interrupt che si attiva quando è stato ricevuto un byte
-    buffer_rx[prova] = UDR0;
-    prova++;
-    byte_rec = 1;
+    buffer_rx[byte_rec++] = UDR0;
 }
 
 ISR(USART0_TX_vect)
@@ -79,11 +75,7 @@ int main(void){
     timer_init();      //inizializzazione timer -> funzione nel file my_adc.c
     sei();             //interrupt abilitati
 
-    
-    
-
     state = 0;
-
 
     while(1){
 
@@ -105,24 +97,24 @@ void state_machine(void){
             adc_number = buffer_rx[0];
             adc_sel(adc_number);     //setto gli adc selezionati
 
-            byte_rec = 0;
             state = 2;
         }
         break;
     case 2:
-        if(byte_rec == 1){
+        if(byte_rec == 2){
             mode = buffer_rx[1];
 
-            byte_rec = 0;
             state = 3;
         }
         break;
     case 3:
-        if(byte_rec == 1){
-            frequency = buffer_rx[2];
-            freq_set(frequency);     //setto la frequenza selezionata, max 255 ms
+        if(byte_rec == 4){
+            frequency |= ((uint16_t) buffer_rx[2])<<8;
+            frequency |= ((uint16_t) buffer_rx[3]);
 
-            max_conv = (uint32_t) (STOP * 1000) / frequency;
+            freq_set(frequency);     //setto la frequenza selezionata
+
+            max_conv = (uint32_t) ((uint32_t) STOP * 10000) / frequency;
         #ifdef APPROX
             len = max_conv * adc_number;
         #else
@@ -132,16 +124,16 @@ void state_machine(void){
             if(mode == 2){
                 buffer = (uint8_t *) malloc(sizeof(uint8_t) * len);
             }
-            byte_rec = 0;
+
             state = 4;
         }
         break;
 
     case 4:
-        if(byte_rec == 1){
+        if(byte_rec == 5){
             //trigger ricevuto
             byte_rec = 0;
-            byte_tra = 1;            //prima volta inizializzato a mano
+            byte_tra = 1;             //prima volta inizializzato a mano
 
             cli();
             TCNT5 = 0;
@@ -188,13 +180,12 @@ void state_machine(void){
     case 6:
         /* buffered mode */
         if(num_conv == max_conv){
-            //invia tutto e azzera num_conv
+            //invia tutto
             UART_putString(buffer);
             cli();
             free(buffer);
             state = 7;
             break;
-            //num_conv = 0;
         }
 
         if(ocr_int == 1){

@@ -5,11 +5,13 @@
 #include <stdint.h>
 
 #define SPEED 19200
+//#define SPEED 38400
 #define PORT "/dev/ttyACM0"
 #define STOP 10
 #define VREF 2.56
 #define BUFFER_MAX 7750
 #define APPROX
+
 
 int main(int argc, char** argv) {
   if (argc<2) {
@@ -19,9 +21,10 @@ int main(int argc, char** argv) {
 
   char* output_file        = argv[1];
   char* filename           = PORT;
-  int baudrate             = SPEED;
+  uint32_t baudrate        = SPEED;
   uint8_t adc_num          = 0;
   uint8_t frequency        = 0;
+  uint16_t frequency_in    = 0;
   uint8_t mode             = 0;
   uint8_t trigger          = 0;
   uint8_t while_var        = 0;
@@ -31,6 +34,14 @@ int main(int argc, char** argv) {
   FILE *fd_out;
   uint8_t *buffer, *buffer_var;
   float *buffer_out;
+
+#if SPEED == 19200
+  uint32_t f_min_array_approx[8] = {6, 11, 16, 21, 27, 32, 37, 42};       //valori trovati empiricamente. numero di decimi di ms.
+  uint32_t f_min_array_no_approx[8] = {11, 21, 32, 42, 53, 63, 74, 84};   //valori trovati empiricamente. numero di decimi di ms.
+#elif SPEED == 38400
+  uint32_t f_min_array_approx[8] = {5, 6, 8, 11, 14, 16, 19, 21};         //valori trovati empiricamente. numero di decimi di ms.
+  uint32_t f_min_array_no_approx[8] = {6, 11, 16, 21, 27, 32, 37, 42};    //valori trovati empiricamente. numero di decimi di ms.
+#endif
   
   
   printf( "opening serial device [%s] ... ", filename);
@@ -102,27 +113,30 @@ int main(int argc, char** argv) {
 
 #ifdef APPROX
   if(mode==1){
-    f_min = ((uint8_t) adc_num/2) + 1;  //trovato empiricamente che se il tempo è più basso di questo allora ci mette più di STOP secondi in modalità continous.
+    f_min = f_min_array_approx[adc_num - 1];
   } else if(mode == 2){
-    f_min = ((uint32_t) STOP * 1000 * adc_num / BUFFER_MAX) + 1;         //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
+    f_min = ((uint32_t) STOP * 10000 * adc_num / BUFFER_MAX) + 1;         //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
   }
 #else
   if(mode==1){
-    f_min = adc_num + 1;                //trovato empiricamente che se il tempo è più basso di questo allora ci mette più di STOP secondi in modalità continous.
+    f_min = f_min_array_no_approx[adc_num - 1];
   } else if(mode == 2){
-    f_min = ((uint32_t) STOP * 1000 * 2 * adc_num / BUFFER_MAX) + 1;     //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
+    f_min = ((uint32_t) STOP * 10000 * 2 * adc_num / BUFFER_MAX) + 1;     //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
   }
 #endif
 
   while_var = 0;
   while(! while_var){
-    printf("Ogni quanti ms deve essere effettuato il sampling?\nSelezionare un valore tra %d e 255:\n", f_min);
-    scanf("%hhu", &frequency);
+    printf("Ogni quanti DECIMI di ms deve essere effettuato il sampling?\nSelezionare un valore tra %d e 10000:\n", f_min);
+    scanf("%hu", &frequency_in);
     while ( getchar() != '\n' );
-    if(frequency >= f_min && frequency <=255){
-      printf("Hai selezionato 0x%hhx ms\n\n", frequency);
-      ssize_t res_freq = write(fd, &frequency, 1);          //invia frequency low
-      if(res_freq != 1){
+    if(frequency_in >= f_min && frequency_in <=10000){   
+      printf("Hai selezionato %.1f ms\n\n", (double) frequency_in/10);
+      uint8_t frequency_out[2];
+      frequency_out[0] = (uint8_t) ((frequency_in>>8) & 0xff);    //prima high
+      frequency_out[1] = (uint8_t) (frequency_in & 0xff);         //poi low
+      ssize_t res_freq = write(fd, &frequency_out, 2);            //invia frequency 
+      if(res_freq != 2){
         printf("ERRORE SU INVIO FREQUENCY\n");
         return -3;
       }
@@ -130,13 +144,18 @@ int main(int argc, char** argv) {
     }
   }
 
-  max_conv = (uint32_t) (STOP * 1000) / frequency;
+  max_conv = (uint32_t) (STOP * 10000) / frequency_in;
 #ifdef APPROX
   len = max_conv * adc_num;
-  buffer_out = (float *) malloc(sizeof(float) * len);
+  if(mode == 2){
+    buffer_out = (float *) malloc(sizeof(float) * len);
+  }
+  
 #else
   len = max_conv * 2 * adc_num;
-  buffer_out = (float *) malloc(sizeof(float) * (len/2));
+  if(mode == 2){
+    buffer_out = (float *) malloc(sizeof(float) * (len/2));
+  }
 #endif
 
   buffer = (uint8_t *) malloc(sizeof(uint8_t) * len);
@@ -167,8 +186,9 @@ int main(int argc, char** argv) {
   
       n_read += read(fd, buffer_var, adc_num);   //devo printare subito i valori che arrivano, dopo averli ricostruiti
       buffer_var += adc_num;
-      fprintf(fd_out,"%d", frequency*i);
+      fprintf(fd_out,"%.1f", (double) frequency_in*i/10);
       for(int j=0;j<adc_num;j++){
+        //fprintf(fd_out,"\t%hx",  buffer[j+i*adc_num]);    //prova
         fprintf(fd_out,"\t%f",  buffer[j+i*adc_num] * VREF / 1024);
       }
       fprintf(fd_out,"\n");
@@ -178,8 +198,10 @@ int main(int argc, char** argv) {
       
       n_read += read(fd, buffer_var, 2*adc_num);   //devo printare subito i valori che arrivano, dopo averli ricostruiti
       buffer_var += 2*adc_num;
-      fprintf(fd_out,"%d", frequency*i);
+      fprintf(fd_out,"%.1f", (double) frequency_in*i/10);
       for(int j=0;j<adc_num;j++){
+          //printf("\t 0x%hhx \t 0x%hhx \n", buffer[2*j+1+2*i*adc_num], buffer[2*j+2*i*adc_num]);
+          //fprintf(fd_out,"\t0x%hx", (( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]);
         fprintf(fd_out,"\t%f", ((( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]) * VREF / 1024);
       }
       fprintf(fd_out,"\n");
@@ -209,7 +231,7 @@ int main(int argc, char** argv) {
 
     //inizio scrittura su file di ourput
     for (int i=1; i<max_conv; i++) {             //la prima conversione va scartata
-      fprintf(fd_out,"%d", frequency*i);
+      fprintf(fd_out,"%.1f", (double) frequency_in*i/10);
       for(int j=0; j<adc_num; j++){
         fprintf(fd_out,"\t%f", buffer_out[i+j*max_conv]);
       }
@@ -218,7 +240,7 @@ int main(int argc, char** argv) {
   }
 
   free(buffer);
-  free(buffer_out);
+  if(mode == 2) free(buffer_out);
   fclose(fd_out);
 
   return 0;

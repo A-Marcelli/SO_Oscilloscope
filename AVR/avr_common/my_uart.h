@@ -3,6 +3,7 @@
 #include <avr/io.h>
 
 #define BAUD 19200
+//#define BAUD 38400
 #define MYUBRR (F_CPU/16/BAUD-1)
 
 //! @brief initializes the uart peripheral
