@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
   uint32_t f_min_array_approx[8] = {5, 6, 8, 11, 14, 16, 19, 21};         //valori trovati empiricamente. numero di decimi di ms.
   uint32_t f_min_array_no_approx[8] = {6, 11, 16, 21, 27, 32, 37, 42};    //valori trovati empiricamente. numero di decimi di ms.
 #endif
-  
+
   
   printf( "opening serial device [%s] ... ", filename);
   int fd=serial_open(filename);
@@ -179,7 +179,7 @@ int main(int argc, char** argv) {
   
   if(mode == 1){
     //sfrutto il fatto che invia 2*adc_num (o adc_num in modalità APPROX) byte per volta prima di aspettare l'interrupt successivo
-    fprintf(fd_out,"#");          //la prima conversione va scartata, metto un "#" che gnuplot usa per indicare un commento
+    //fprintf(fd_out,"#");          //la prima conversione va scartata, metto un "#" che gnuplot usa per indicare un commento
 
 #ifdef APPROX
     for(int i=0;i<max_conv;i++){
@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
       fprintf(fd_out,"%.1f", (double) frequency_in*i/10);
       for(int j=0;j<adc_num;j++){
         //fprintf(fd_out,"\t%hx",  buffer[j+i*adc_num]);    //prova
-        fprintf(fd_out,"\t%f",  buffer[j+i*adc_num] * VREF / 1024);
+        fprintf(fd_out,"\t%f",  ((uint16_t) buffer[j+i*adc_num]<<2) * VREF / 1024);
       }
       fprintf(fd_out,"\n");
     }
@@ -202,7 +202,7 @@ int main(int argc, char** argv) {
       for(int j=0;j<adc_num;j++){
           //printf("\t 0x%hhx \t 0x%hhx \n", buffer[2*j+1+2*i*adc_num], buffer[2*j+2*i*adc_num]);
           //fprintf(fd_out,"\t0x%hx", (( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]);
-        fprintf(fd_out,"\t%f", ((( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]) * VREF / 1024);
+          fprintf(fd_out,"\t%f", ((( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]) * VREF / 1024);
       }
       fprintf(fd_out,"\n");
     }
@@ -221,7 +221,7 @@ int main(int argc, char** argv) {
 
 #ifdef APPROX
     for(int i = 0; i<len; i++){
-        buffer_out[i] = buffer[i] * VREF / 1024;   //trasformo in Volt
+        buffer_out[i] = ((uint16_t) buffer[i]<<2) * VREF / 1024;   //trasformo in Volt
     }
 #else
     for(int i = 0; i<(len/2); i++){
@@ -230,7 +230,7 @@ int main(int argc, char** argv) {
 #endif
 
     //inizio scrittura su file di ourput
-    for (int i=1; i<max_conv; i++) {             //la prima conversione va scartata
+    for (int i=0; i<max_conv; i++) {             //la prima conversione va scartata
       fprintf(fd_out,"%.1f", (double) frequency_in*i/10);
       for(int j=0; j<adc_num; j++){
         fprintf(fd_out,"\t%f", buffer_out[i+j*max_conv]);

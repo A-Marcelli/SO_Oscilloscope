@@ -160,6 +160,7 @@ void state_machine(void){
             //conversione e invio
             for(uint8_t var = 0; var < adc_number;var++){
                 //conversione
+                adc_conv_ground();   //necessario per scaricare il condensatore prima di una misura, sennò non fa in tempo a scaricarsi e le misure vengono errate
                 adc_conv(var);
 
                 //invio
@@ -193,6 +194,7 @@ void state_machine(void){
             
             for(uint8_t var = 0; var < adc_number;var++){
                 //conversione
+                adc_conv_ground();      //necessario per scaricare il condensatore prima di una misura, sennò non fa in tempo a scaricarsi e le misure vengono errate
                 adc_conv(var);
 
                 //storage

@@ -35,15 +35,26 @@ void freq_set(uint16_t frequency){
 
 void adc_conv(uint8_t var){
 
-	ADMUX = (ADMUX & 0xf8) | (var & 0x07);   //seleziono il canale da cui leggere
-	ADCSRA |= (1<<ADSC);                     //faccio partire la conversione
+	ADMUX = (ADMUX & 0xe0) | (var & 0x07);  //seleziono il canale da cui leggere
+	ADCSRA |= (1<<ADSC);                    //faccio partire la conversione
 
-	while(ADCSRA & (1<<ADSC));               //aspetta che finisca la conversione
+	while(ADCSRA & (1<<ADSC));              //aspetta che finisca la conversione
+
+	ADCSRA |= (1<<ADSC);                    //faccio partire la seconda conversione, necessaria perchè una misura sola non basta per caricare il condensatore
+											//completamente. con una sola conversione raggiunge massimo valori di 1.2V
+	while(ADCSRA & (1<<ADSC));              //aspetta che finisca la conversione
 
 #ifdef APPROX
 	buffer_tx[0] = ADCH;
 #else
-	buffer_tx[0] = ADCL;
+	buffer_tx[0] = ADCL;                     //va letta prima questo registro
 	buffer_tx[1] = ADCH;
 #endif
+}
+
+void adc_conv_ground(void){
+	ADMUX = (ADMUX & 0xe0) | 0x1f;           //seleziono il canale di ground
+	ADCSRA |= (1<<ADSC);                     //faccio partire la conversione
+
+	while(ADCSRA & (1<<ADSC)); 
 }
