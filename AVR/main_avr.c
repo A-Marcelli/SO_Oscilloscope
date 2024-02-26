@@ -12,25 +12,26 @@
 
 //macro
 #define STOP 10
+//La macro APPROX è definita in adc.h
+//La macro BAUD   è definita in uart.h
 
 //global variables
 volatile uint8_t byte_rec = 0;
-volatile uint8_t byte_tra = 0;   //1=transmesso
-volatile uint8_t ocr_int  = 0;   //1=ocr interrupt
+volatile uint8_t byte_tra = 0;     //1=transmesso
+volatile uint8_t ocr_int  = 0;     //1=ocr interrupt
 
-volatile uint8_t buffer_rx[4];      //variabile di appoggio
-volatile uint8_t buffer_tx[2];      //variabile di appoggio
+volatile uint8_t buffer_rx[4];     //variabile di appoggio
+volatile uint8_t buffer_tx[2];     //variabile di appoggio
 uint8_t *buffer;
-volatile uint32_t num_conv = 0;    //numero di conversioni portate a termine, utilizzato nella buffered mode per riempire il vettore
-volatile uint32_t len      = 0;
-uint32_t max_conv          = 0;
-uint8_t prova              = 0;    //prova
+uint32_t num_conv        = 0;      //numero di conversioni portate a termine, utilizzato nella buffered mode per riempire il vettore
+uint32_t len             = 0;
+uint32_t max_conv        = 0;
 
-volatile uint8_t adc_number;       //numero di canali adc da utilizzare
-volatile uint16_t frequency;       //numero di ogni quanti decimi di ms si effettuerà un sampling
-volatile uint8_t mode;             //1 = continuous sampling, 2 = buffered mode
+uint8_t adc_number;                //numero di canali adc da utilizzare
+uint16_t frequency;                //numero di ogni quanti decimi di ms si effettuerà un sampling
+uint8_t mode;                      //1 = continuous sampling, 2 = buffered mode
 
-volatile uint8_t state;            //contiene lo stato in cui mi trovo:
+uint8_t state;                     //contiene lo stato in cui mi trovo:
                                    //000 = inizializzazione
                                    //001 = aspettando numero dispositivi
                                    //010 = aspettando modalità di esecuzione
@@ -63,7 +64,6 @@ ISR(USART0_TX_vect)
 
 //funzioni
 void state_machine(void);
-
 
 
 int main(void){

@@ -4,13 +4,13 @@
 #include <unistd.h>
 #include <stdint.h>
 
-#define SPEED 19200
-//#define SPEED 38400
+//#define SPEED 19200
+#define SPEED 38400
 #define PORT "/dev/ttyACM0"
 #define STOP 10
 #define VREF 2.56
 #define BUFFER_MAX 7750
-#define APPROX
+//#define APPROX
 
 
 int main(int argc, char** argv) {
@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
   char* filename           = PORT;
   uint32_t baudrate        = SPEED;
   uint8_t adc_num          = 0;
-  uint8_t frequency        = 0;
+  uint8_t frequency        = 0;           //contiene il tempo di campionamento, non la frequenza
   uint16_t frequency_in    = 0;
   uint8_t mode             = 0;
   uint8_t trigger          = 0;
@@ -179,7 +179,6 @@ int main(int argc, char** argv) {
   
   if(mode == 1){
     //sfrutto il fatto che invia 2*adc_num (o adc_num in modalità APPROX) byte per volta prima di aspettare l'interrupt successivo
-    //fprintf(fd_out,"#");          //la prima conversione va scartata, metto un "#" che gnuplot usa per indicare un commento
 
 #ifdef APPROX
     for(int i=0;i<max_conv;i++){
@@ -188,7 +187,6 @@ int main(int argc, char** argv) {
       buffer_var += adc_num;
       fprintf(fd_out,"%.1f", (double) frequency_in*i/10);
       for(int j=0;j<adc_num;j++){
-        //fprintf(fd_out,"\t%hx",  buffer[j+i*adc_num]);    //prova
         fprintf(fd_out,"\t%f",  ((uint16_t) buffer[j+i*adc_num]<<2) * VREF / 1024);
       }
       fprintf(fd_out,"\n");
@@ -200,8 +198,6 @@ int main(int argc, char** argv) {
       buffer_var += 2*adc_num;
       fprintf(fd_out,"%.1f", (double) frequency_in*i/10);
       for(int j=0;j<adc_num;j++){
-          //printf("\t 0x%hhx \t 0x%hhx \n", buffer[2*j+1+2*i*adc_num], buffer[2*j+2*i*adc_num]);
-          //fprintf(fd_out,"\t0x%hx", (( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]);
           fprintf(fd_out,"\t%f", ((( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]) * VREF / 1024);
       }
       fprintf(fd_out,"\n");
@@ -230,7 +226,7 @@ int main(int argc, char** argv) {
 #endif
 
     //inizio scrittura su file di ourput
-    for (int i=0; i<max_conv; i++) {             //la prima conversione va scartata
+    for (int i=0; i<max_conv; i++) {
       fprintf(fd_out,"%.1f", (double) frequency_in*i/10);
       for(int j=0; j<adc_num; j++){
         fprintf(fd_out,"\t%f", buffer_out[i+j*max_conv]);

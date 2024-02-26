@@ -80,7 +80,7 @@ void serial_set_blocking(int fd, int should_block) {
       printf ("error %d from tggetattr", errno);
       return;
   }
-  tty.c_cc[VMIN]  = should_block ? 64 : 0;
+  tty.c_cc[VMIN]  = should_block ? 64 : 0;         //leggo massimo 64 byte alla volta
   tty.c_cc[VTIME] = 5;                             // 0.5 seconds read timeout
 
   if (tcsetattr (fd, TCSANOW, &tty) != 0)

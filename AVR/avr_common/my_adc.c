@@ -47,7 +47,7 @@ void adc_conv(uint8_t var){
 #ifdef APPROX
 	buffer_tx[0] = ADCH;
 #else
-	buffer_tx[0] = ADCL;                     //va letta prima questo registro
+	buffer_tx[0] = ADCL;                     //va letto prima questo registro
 	buffer_tx[1] = ADCH;
 #endif
 }
