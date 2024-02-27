@@ -28,14 +28,14 @@ uint32_t len             = 0;
 uint32_t max_conv        = 0;
 
 uint8_t adc_number;                //numero di canali adc da utilizzare
-uint16_t frequency;                //numero di ogni quanti decimi di ms si effettuerà un sampling
+uint16_t period;                //numero di ogni quanti decimi di ms si effettuerà un sampling
 uint8_t mode;                      //1 = continuous sampling, 2 = buffered mode
 
 uint8_t state;                     //contiene lo stato in cui mi trovo:
                                    //000 = inizializzazione
                                    //001 = aspettando numero dispositivi
                                    //010 = aspettando modalità di esecuzione
-                                   //011 = aspettando frequency
+                                   //011 = aspettando period
                                    //100 = aspettando trigger
                                    //101 = esecuzione continous sampling
                                    //110 = esecuzione buffered mode
@@ -109,12 +109,12 @@ void state_machine(void){
         break;
     case 3:
         if(byte_rec == 4){
-            frequency |= ((uint16_t) buffer_rx[2])<<8;
-            frequency |= ((uint16_t) buffer_rx[3]);
+            period |= ((uint16_t) buffer_rx[2])<<8;
+            period |= ((uint16_t) buffer_rx[3]);
 
-            freq_set(frequency);     //setto la frequenza selezionata
+            period_set(period);     //setto il periodo selezionato
 
-            max_conv = (uint32_t) ((uint32_t) STOP * 10000) / frequency;
+            max_conv = (uint32_t) ((uint32_t) STOP * 10000) / period;
         #ifdef APPROX
             len = max_conv * adc_number;
         #else

@@ -27,9 +27,9 @@ void adc_sel(uint8_t adc_number){
 	} 
 }
 
-void freq_set(uint16_t frequency){
-	//imposta la frequenza selezionata
-	uint16_t ocrval=(uint16_t)(6.25*frequency);  //ogni quanti decimi di ms deve essere effettuato un sampling
+void period_set(uint16_t period){
+	//imposto il periodo selezionato
+	uint16_t ocrval=(uint16_t)(6.25*period);  //ogni quanti decimi di ms deve essere effettuato un sampling
 	OCR5A = ocrval;
 }
 

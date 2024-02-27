@@ -23,8 +23,8 @@ int main(int argc, char** argv) {
   char* filename           = PORT;
   uint32_t baudrate        = SPEED;
   uint8_t adc_num          = 0;
-  uint8_t frequency        = 0;           //contiene il tempo di campionamento, non la frequenza
-  uint16_t frequency_in    = 0;
+  uint8_t period        = 0;           //contiene il tempo di campionamento
+  uint16_t period_in    = 0;
   uint8_t mode             = 0;
   uint8_t trigger          = 0;
   uint8_t while_var        = 0;
@@ -36,11 +36,11 @@ int main(int argc, char** argv) {
   float *buffer_out;
 
 #if SPEED == 19200
-  uint32_t f_min_array_approx[8] = {6, 11, 16, 21, 27, 32, 37, 42};       //valori trovati empiricamente. numero di decimi di ms.
-  uint32_t f_min_array_no_approx[8] = {11, 21, 32, 42, 53, 63, 74, 84};   //valori trovati empiricamente. numero di decimi di ms.
+  uint32_t t_min_array_approx[8] = {6, 11, 16, 21, 27, 32, 37, 42};       //valori trovati empiricamente. numero di decimi di ms.
+  uint32_t t_min_array_no_approx[8] = {11, 21, 32, 42, 53, 63, 74, 84};   //valori trovati empiricamente. numero di decimi di ms.
 #elif SPEED == 38400
-  uint32_t f_min_array_approx[8] = {5, 6, 8, 11, 14, 16, 19, 21};         //valori trovati empiricamente. numero di decimi di ms.
-  uint32_t f_min_array_no_approx[8] = {6, 11, 16, 21, 27, 32, 37, 42};    //valori trovati empiricamente. numero di decimi di ms.
+  uint32_t t_min_array_approx[8] = {5, 6, 8, 11, 14, 16, 19, 21};         //valori trovati empiricamente. numero di decimi di ms.
+  uint32_t t_min_array_no_approx[8] = {6, 11, 16, 21, 27, 32, 37, 42};    //valori trovati empiricamente. numero di decimi di ms.
 #endif
 
   
@@ -109,42 +109,42 @@ int main(int argc, char** argv) {
     }
   }
 
-  uint32_t f_min = 1;          //tempo minimo (1/frequenza massima)
+  uint32_t t_min = 1;          //tempo minimo (1/frequenza massima)
 
 #ifdef APPROX
   if(mode==1){
-    f_min = f_min_array_approx[adc_num - 1];
+    t_min = t_min_array_approx[adc_num - 1];
   } else if(mode == 2){
-    f_min = ((uint32_t) STOP * 10000 * adc_num / BUFFER_MAX) + 1;         //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
+    t_min = ((uint32_t) STOP * 10000 * adc_num / BUFFER_MAX) + 1;         //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
   }
 #else
   if(mode==1){
-    f_min = f_min_array_no_approx[adc_num - 1];
+    t_min = t_min_array_no_approx[adc_num - 1];
   } else if(mode == 2){
-    f_min = ((uint32_t) STOP * 10000 * 2 * adc_num / BUFFER_MAX) + 1;     //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
+    t_min = ((uint32_t) STOP * 10000 * 2 * adc_num / BUFFER_MAX) + 1;     //devo fare in modo che la grandezza del buffer non superi la SRAM del controllore
   }
 #endif
 
   while_var = 0;
   while(! while_var){
-    printf("Ogni quanti DECIMI di ms deve essere effettuato il sampling?\nSelezionare un valore tra %d e 10000:\n", f_min);
-    scanf("%hu", &frequency_in);
+    printf("Ogni quanti DECIMI di ms deve essere effettuato il sampling?\nSelezionare un valore tra %d e 10000:\n", t_min);
+    scanf("%hu", &period_in);
     while ( getchar() != '\n' );
-    if(frequency_in >= f_min && frequency_in <=10000){   
-      printf("Hai selezionato %.1f ms\n\n", (double) frequency_in/10);
-      uint8_t frequency_out[2];
-      frequency_out[0] = (uint8_t) ((frequency_in>>8) & 0xff);    //prima high
-      frequency_out[1] = (uint8_t) (frequency_in & 0xff);         //poi low
-      ssize_t res_freq = write(fd, &frequency_out, 2);            //invia frequency 
-      if(res_freq != 2){
-        printf("ERRORE SU INVIO FREQUENCY\n");
+    if(period_in >= t_min && period_in <=10000){   
+      printf("Hai selezionato %.1f ms\n\n", (double) period_in/10);
+      uint8_t period_out[2];
+      period_out[0] = (uint8_t) ((period_in>>8) & 0xff);    //prima high
+      period_out[1] = (uint8_t) (period_in & 0xff);         //poi low
+      ssize_t res_per = write(fd, &period_out, 2);            //invia period 
+      if(res_per != 2){
+        printf("ERRORE SU INVIO period\n");
         return -3;
       }
       while_var = 1;
     }
   }
 
-  max_conv = (uint32_t) (STOP * 10000) / frequency_in;
+  max_conv = (uint32_t) (STOP * 10000) / period_in;
 #ifdef APPROX
   len = max_conv * adc_num;
   if(mode == 2){
@@ -185,7 +185,7 @@ int main(int argc, char** argv) {
   
       n_read += read(fd, buffer_var, adc_num);   //devo printare subito i valori che arrivano, dopo averli ricostruiti
       buffer_var += adc_num;
-      fprintf(fd_out,"%.1f", (double) frequency_in*i/10);
+      fprintf(fd_out,"%.1f", (double) period_in*i/10);
       for(int j=0;j<adc_num;j++){
         fprintf(fd_out,"\t%f",  ((uint16_t) buffer[j+i*adc_num]<<2) * VREF / 1024);
       }
@@ -196,7 +196,7 @@ int main(int argc, char** argv) {
       
       n_read += read(fd, buffer_var, 2*adc_num);   //devo printare subito i valori che arrivano, dopo averli ricostruiti
       buffer_var += 2*adc_num;
-      fprintf(fd_out,"%.1f", (double) frequency_in*i/10);
+      fprintf(fd_out,"%.1f", (double) period_in*i/10);
       for(int j=0;j<adc_num;j++){
           fprintf(fd_out,"\t%f", ((( (uint16_t) buffer[(2*j)+1+2*i*adc_num]) <<8) | buffer[2*j+2*i*adc_num]) * VREF / 1024);
       }
@@ -227,7 +227,7 @@ int main(int argc, char** argv) {
 
     //inizio scrittura su file di ourput
     for (int i=0; i<max_conv; i++) {
-      fprintf(fd_out,"%.1f", (double) frequency_in*i/10);
+      fprintf(fd_out,"%.1f", (double) period_in*i/10);
       for(int j=0; j<adc_num; j++){
         fprintf(fd_out,"\t%f", buffer_out[i+j*max_conv]);
       }
