@@ -77,7 +77,11 @@ int main(int argc, char** argv) {
     scanf("%hhu", &adc_num);
     while ( getchar() != '\n' );
     if(adc_num >= 1 && adc_num <= 8){
-      printf("Hai selezionato %hhx canali\n\n", adc_num);
+      if(adc_num!=1){
+        printf("Hai selezionato i canali da A0 a A%hhx!\n\n", adc_num-1);
+      } else {
+        printf("Hai selezionato il canale A0!\n\n");
+      }
       ssize_t res_adc = write(fd, &adc_num, 1);             //invia adc_num
       if(res_adc != 1){
         printf("ERRORE SU INVIO NUMERO CANALI ADC\n");
