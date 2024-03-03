@@ -28,7 +28,7 @@ uint32_t len             = 0;
 uint32_t max_conv        = 0;
 
 uint8_t adc_number;                //numero di canali adc da utilizzare
-uint16_t period;                   //numero di ogni quanti decimi di ms si effettuerà un sampling
+uint16_t period          = 0;      //numero di ogni quanti decimi di ms si effettuerà un sampling
 uint8_t mode;                      //1 = continuous sampling, 2 = buffered mode
 
 uint8_t state;                     //contiene lo stato in cui mi trovo:
@@ -132,7 +132,6 @@ void state_machine(void){
     case 4:
         if(byte_rec == 5){
             //trigger ricevuto
-            byte_rec = 0;
             byte_tra = 1;             //prima volta inizializzato a mano
 
             cli();
