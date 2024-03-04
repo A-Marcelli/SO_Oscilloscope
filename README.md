@@ -10,7 +10,7 @@ Il programma PC comunica tramite porta seriale con la scheda, collegata tramite 
 - Periodo di campionamento
 - Trigger
 
-Un timer scandisce il periodo di campionamento tramite interrupt, l'ADC si occupa delle conversioni e i dati vengono inviati tramite UART dopo 10 secondi di conversioni. Il PC si occupa di riceverli, ricostruirli, rielabolarli e stamparli in un file di output il cui nome viene passato dall'utente.
+Un timer scandisce il periodo di campionamento tramite interrupt, l'ADC si occupa delle conversioni e i dati vengono inviati tramite UART o subito o dopo 10 secondi, a seconda della modalità scelta. Il PC si occupa di riceverli, ricostruirli, rielabolarli e stamparli in un file di output il cui nome viene passato dall'utente.
 Uno script GNUPLOT si occupa di plottare i risultati in formato `.png`.
 
 L'utente può scegliere di ricevere i risultati con due precisioni differenti:
@@ -31,7 +31,7 @@ I valori pre-impostati delle macro sono i seguenti.
 
 Per la loro posizione e come modificarle fare riferimento alla relazione
 ### Parte Atmega
-Per compilare il progetto e caricarlo sulla scheda è stato usato un makefile, preso dai file utilizzati a lezione, ed è stato modificato per compilare il progetto. Quindi i comandi da utilizzare direttamente dalla cartella `AVR` sono:
+Per compilare il progetto e caricarlo sulla scheda è stato usato un makefile, preso dai file utilizzati a lezione, ed è stato modificato per compilare il progetto. Quindi i comandi da utilizzare, direttamente dalla cartella `AVR`, sono:
 ```
 $ make
 $ make main_avr.hex

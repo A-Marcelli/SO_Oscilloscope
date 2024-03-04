@@ -229,7 +229,7 @@ int main(int argc, char** argv) {
     }
 #endif
 
-    //inizio scrittura su file di ourput
+    //inizio scrittura su file di output
     for (int i=0; i<max_conv; i++) {
       fprintf(fd_out,"%.1f", (double) period_in*i/10);
       for(int j=0; j<adc_num; j++){
